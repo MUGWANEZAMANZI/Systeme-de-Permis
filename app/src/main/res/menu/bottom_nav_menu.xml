@@ -1,0 +1,20 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/nav_home"
+        android:title="Accueil"
+        android:icon="@android:drawable/ic_menu_view" />
+    <item
+        android:id="@+id/nav_dashboard"
+        android:title="Enregistrer"
+        android:icon="@android:drawable/ic_menu_edit" />
+    <item
+        android:id="@+id/nav_checkpoint"
+        android:title="Contrôle"
+        android:icon="@android:drawable/ic_menu_search" />
+    <item
+        android:id="@+id/nav_print_card"
+        android:title="Imprimer Carte"
+
+        android:icon="@android:drawable/ic_menu_save" />
+</menu>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:fitsSystemWindows="true"
+    android:background="@color/police"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:paddingTop="@dimen/safe_area_top">
+
+        <TextView android:text="Point de Contrôle Routier" android:textColor="@color/white"
+            android:textSize="16sp" android:textStyle="bold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" />
+        <EditText android:id="@+id/input_edit" android:textColorHint="@color/white" android:textColor="@color/white"
+            android:textSize="12dp"
+            android:hint="Entrer le numéro de permis ou la plaque d'immatriculation" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" />
+        <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginTop="8dp">
+            <Button android:id="@+id/button_search" android:text="Rechercher"
+                android:textSize="12dp"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
+            <Button android:id="@+id/button_nfc"
+                android:textSize="12dp"
+                android:text="Scanner" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="8dp" />
+            <Button android:id="@+id/button_qr"
+                android:textSize="12dp"
+                android:text="Code QR" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Dialog layout for adding penalty (frontend only, not shown by default) -->
+        <LinearLayout
+            android:id="@+id/add_penalty_dialog"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            android:padding="16dp"
+            android:visibility="gone"
+            android:elevation="4dp"
+            android:layout_marginTop="24dp">
+            <EditText
+                android:id="@+id/penalty_plate_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Plaque du véhicule" />
+            <TextView
+                android:text="Sélectionner l'infraction :"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+            <RadioGroup
+                android:id="@+id/radio_group_violations"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <RadioButton android:id="@+id/radio_no_permit" android:text="Conduite sans permis (50 000 FC)" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <RadioButton
+                    android:id="@+id/radio_drunk_driving"
+                    android:text="Conduite en état d'ivresse (100 000 FC)"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <RadioButton android:id="@+id/radio_speeding" android:text="Excès de vitesse (30 000 FC)" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <RadioButton android:id="@+id/radio_no_seatbelt" android:text="Non-port de la ceinture (10 000 FC)" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <RadioButton android:id="@+id/radio_phone" android:text="Téléphone au volant (20 000 FC)" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <RadioButton android:id="@+id/radio_other" android:text="Autre (à préciser)" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </RadioGroup>
+            <EditText
+                android:id="@+id/edit_other_violation"
+                android:hint="Préciser l'infraction (si Autre)"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+            <Button
+                android:id="@+id/button_confirm_penalty"
+                android:text="Ajouter la pénalité"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+            <Button
+                android:id="@+id/button_close_penalty_dialog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fermer"
+                android:layout_gravity="end"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+        <ProgressBar android:id="@+id/progress_bar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:visibility="gone" />
+        <LinearLayout android:id="@+id/result_box" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="#f5f5f5" android:padding="12dp" android:layout_marginTop="16dp" android:visibility="gone">
+            <TextView android:id="@+id/result_name" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/result_license" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/result_plate" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/result_bloodgroup" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/result_issue" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/result_expiry" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/result_nationalid" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/penalties_title" android:text="Pénalités associées :" android:textStyle="bold" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:visibility="gone" />
+            <ProgressBar android:id="@+id/penalties_loading" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:visibility="gone" />
+            <LinearLayout android:id="@+id/penalties_list" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        </LinearLayout>
+        <!-- Floating Action Button for adding penalty -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/button_add_penalty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|bottom"
+                android:layout_margin="16dp"
+                android:src="@android:drawable/ic_input_add"
+                android:contentDescription="Ajouter une pénalité"
+                app:backgroundTint="@color/white"
+                app:tint="@color/black" />
+        </FrameLayout>
+    </LinearLayout>
+</ScrollView>

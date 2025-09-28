@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:background="@color/police"
+    android:fitsSystemWindows="true"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:paddingTop="@dimen/safe_area_top">
+
+        <EditText android:id="@+id/edit_name" android:hint="Nom" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_surname" android:hint="Prénom" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_address" android:hint="Adresse" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_plate" android:hint="Plaque" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_bloodgroup" android:hint="Groupe sanguin" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_licenseid" android:hint="Numéro de permis" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_issue" android:hint="Date d'émission (AAAA-MM-JJ)" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_expiry" android:hint="Date d'expiration (AAAA-MM-JJ)" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_nationality" android:hint="Nationalité" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_nationalid" android:hint="ID National" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/edit_phone" android:hint="Téléphone" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <EditText android:id="@+id/edit_email" android:hint="Email" android:textColor="@color/white" android:textColorHint="@color/hint"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/nfc_content_textview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Approchez une carte de permit..."
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            android:layout_marginTop="16dp"
+            android:background="#e3e3e3"
+            android:padding="8dp" />
+
+        <EditText
+            android:id="@+id/edit_nfc_tag"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="NFC Tag (auto)"
+            android:visibility="gone" />
+
+        <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center">
+            <Button android:id="@+id/button_pick_image" android:text="Choisir une image" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <Button android:id="@+id/button_take_photo" android:text="Prendre une photo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" />
+        </LinearLayout>
+        <ImageView android:id="@+id/image_view" android:layout_width="120dp" android:layout_height="120dp" android:layout_gravity="center" android:layout_marginTop="8dp" android:scaleType="centerCrop" />
+
+<!--        <EditText android:id="@+id/edit_licenses_allowed" android:hint="Permis autorisés (ex: A, B, C)" android:layout_width="match_parent" android:layout_height="wrap_content" />-->
+        <EditText android:id="@+id/edit_date_lieu" android:hint="Date et lieu de délivrance" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView android:text="Catégories autorisées:" android:textColor="@color/white"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
+        <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <CheckBox android:id="@+id/checkbox_cat_a" android:text="A" android:textColor="@color/white"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <CheckBox android:id="@+id/checkbox_cat_b" android:text="B" android:textColor="@color/white"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <CheckBox android:id="@+id/checkbox_cat_c" android:text="C" android:textColor="@color/white"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <CheckBox android:id="@+id/checkbox_cat_d" android:text="D" android:textColor="@color/white"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <CheckBox android:id="@+id/checkbox_cat_e" android:text="E" android:textColor="@color/white"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <Button android:id="@+id/button_register" android:text="Enregistrer" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" />
+        <ProgressBar android:id="@+id/progress_bar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>
+

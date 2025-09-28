@@ -1,0 +1,46 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:gravity="center"
+    android:background="@color/police"
+    android:padding="24dp"
+    android:paddingTop="@dimen/safe_area_top">
+
+
+    <ImageView
+        android:id="@+id/flag_image"
+        android:layout_width="240dp"
+        android:layout_height="160dp"
+        android:src="@drawable/flag"
+        android:layout_gravity="center"
+        android:contentDescription="Drapeau du Congo"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/police_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Police Du Nord Kivu"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/white"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/home_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/home_desc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:layout_marginTop="8dp"/>
+
+</LinearLayout>
