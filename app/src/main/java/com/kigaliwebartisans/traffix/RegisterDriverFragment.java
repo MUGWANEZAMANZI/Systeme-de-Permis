@@ -23,6 +23,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.util.Calendar;
 
@@ -269,7 +271,13 @@ public class RegisterDriverFragment extends Fragment {
                         Toast.makeText(getContext(), "Enregistrement réussi!", Toast.LENGTH_LONG).show();
                         clearFields();
                     } else {
-                        new AlertDialog.Builder(getContext()).setTitle("Erreur").setMessage(sbResp.toString()).show();
+                        try {
+                            JSONObject errJson = new JSONObject(sbResp.toString());
+                            String msg = errJson.optString("message", "Erreur d'enregistrement");
+                            new AlertDialog.Builder(getContext()).setTitle("Erreur").setMessage(msg).show();
+                        } catch (Exception e2) {
+                            new AlertDialog.Builder(getContext()).setTitle("Erreur").setMessage("Échec de l'enregistrement (Code: " + responseCode + ")").show();
+                        }
                     }
                 });
             } catch (Exception e) {

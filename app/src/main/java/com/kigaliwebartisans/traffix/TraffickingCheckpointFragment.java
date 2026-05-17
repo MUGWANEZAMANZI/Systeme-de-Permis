@@ -1,9 +1,5 @@
 package com.kigaliwebartisans.traffix;
 
-import static com.kigaliwebartisans.traffix.MainActivity.QR_SCAN_REQUEST_CODE;
-
-import android.app.Activity;
-import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -41,12 +37,11 @@ import java.nio.charset.StandardCharsets;
 public class TraffickingCheckpointFragment extends Fragment {
     private static final String TAG = "CheckpointFragment";
     private EditText inputEdit;
-    private Button searchButton, nfcButton, qrButton;
+    private Button searchButton, nfcButton;
     private FloatingActionButton addPenaltyButton;
     private ProgressBar progressBar;
     private LinearLayout resultBox;
     private TextView penaltiesTitle;
-    private ProgressBar penaltiesLoading;
     private LinearLayout penaltiesList;
     private ImageView resultImage;
 
@@ -58,11 +53,9 @@ public class TraffickingCheckpointFragment extends Fragment {
         inputEdit = view.findViewById(R.id.input_edit);
         searchButton = view.findViewById(R.id.button_search);
         nfcButton = view.findViewById(R.id.button_nfc);
-        qrButton = view.findViewById(R.id.button_qr);
         progressBar = view.findViewById(R.id.progress_bar);
         resultBox = view.findViewById(R.id.result_box);
         penaltiesTitle = view.findViewById(R.id.penalties_title);
-        penaltiesLoading = view.findViewById(R.id.penalties_loading);
         penaltiesList = view.findViewById(R.id.penalties_list);
         addPenaltyButton = view.findViewById(R.id.button_add_penalty);
         resultImage = view.findViewById(R.id.result_image);
@@ -79,16 +72,13 @@ public class TraffickingCheckpointFragment extends Fragment {
         if (nfcButton != null) nfcButton.setOnClickListener(v -> {
             Toast.makeText(getContext(), "Approchez une carte NFC...", Toast.LENGTH_SHORT).show();
         });
-        if (qrButton != null) qrButton.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "Veuillez utiliser le lecteur QR code de votre application", Toast.LENGTH_SHORT).show();
-        });
 
         return view;
     }
 
     public void searchByNfcTag(String tagId) {
-        if (getActivity() == null) return;
-        getActivity().runOnUiThread(() -> {
+        if (!isAdded()) return;
+        requireActivity().runOnUiThread(() -> {
             if (inputEdit != null) inputEdit.setText(tagId);
             performNetworkSearch(ApiConstants.URL + "/driver-by-card/" + tagId);
         });
@@ -115,14 +105,15 @@ public class TraffickingCheckpointFragment extends Fragment {
         penaltiesTitle.setVisibility(View.GONE);
 
         new Thread(() -> {
+            HttpURLConnection conn = null;
             try {
                 URL url = new URL(urlString);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(5000);
                 
                 int responseCode = conn.getResponseCode();
-                InputStream is = (responseCode == 200) ? conn.getInputStream() : conn.getErrorStream();
+                InputStream is = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
                 StringBuilder sb = new StringBuilder();
                 String line;
@@ -130,9 +121,9 @@ public class TraffickingCheckpointFragment extends Fragment {
                 reader.close();
 
                 String rawResponse = sb.toString();
-                Log.d(TAG, "Raw Response: " + rawResponse);
+                Log.d(TAG, "Search Response: " + rawResponse);
 
-                getActivity().runOnUiThread(() -> {
+                requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     if (responseCode == 200) {
                         displayDriverData(rawResponse);
@@ -141,10 +132,12 @@ public class TraffickingCheckpointFragment extends Fragment {
                     }
                 });
             } catch (Exception e) {
-                getActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
+                requireActivity().runOnUiThread(() -> {
+                    if (progressBar != null) progressBar.setVisibility(View.GONE);
                     Toast.makeText(getContext(), "Erreur réseau: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         }).start();
     }
@@ -152,65 +145,56 @@ public class TraffickingCheckpointFragment extends Fragment {
     private void displayDriverData(String jsonString) {
         try {
             JSONObject json = new JSONObject(jsonString);
-            
-            // Handle Laravel's nested model structure if present
-            JSONObject driver = json.optJSONObject("driver");
-            if (driver != null && driver.has("App\\Models\\Driver")) {
-                driver = driver.getJSONObject("App\\Models\\Driver");
-            } else if (driver == null) {
-                driver = json;
+            JSONObject driverData = json;
+
+            // Handle structure with 'drivers' array (from driver-by-card)
+            if (json.has("drivers")) {
+                JSONArray driversArray = json.getJSONArray("drivers");
+                if (driversArray.length() > 0) driverData = driversArray.getJSONObject(0);
+                else throw new Exception("Liste de conducteurs vide.");
             }
 
-            JSONObject license = json.optJSONObject("license");
-            if (license != null && license.has("App\\Models\\License")) {
-                license = license.getJSONObject("App\\Models\\License");
-            } else if (license == null) {
-                license = json;
-            }
+            // Unwrap Laravel model wrappers if present
+            JSONObject driver = unwrap(driverData.optJSONObject("driver"));
+            JSONObject license = unwrap(driverData.optJSONObject("license"));
+            JSONArray penaltiesArray = driverData.optJSONArray("penalties");
 
-            JSONArray penaltiesArray = json.optJSONArray("penalties");
+            if (driver == null || license == null) {
+                throw new Exception("Données du serveur incomplètes.");
+            }
 
             resultBox.setVisibility(View.VISIBLE);
             
-            String firstName = driver.optString("name", "N/A");
-            String surName = driver.optString("surName", driver.optString("surname", ""));
-            ((TextView) resultBox.findViewById(R.id.result_name)).setText("Nom: " + firstName + " " + surName);
-            
-            String licenseNum = license.optString("licenseNumber", driver.optString("licenseId", "N/A"));
-            ((TextView) resultBox.findViewById(R.id.result_license)).setText("Permis: " + licenseNum);
-            
-            String plateNum = license.optString("plateNumber", driver.optString("plate", "N/A"));
-            ((TextView) resultBox.findViewById(R.id.result_plate)).setText("Plaque: " + plateNum);
-            
+            String fullName = driver.optString("name", "N/A") + " " + driver.optString("surName", driver.optString("surname", ""));
+            ((TextView) resultBox.findViewById(R.id.result_name)).setText("Nom: " + fullName.trim());
+            ((TextView) resultBox.findViewById(R.id.result_license)).setText("Permis: " + license.optString("licenseNumber", "N/A"));
+            ((TextView) resultBox.findViewById(R.id.result_plate)).setText("Plaque: " + license.optString("plateNumber", "N/A"));
             ((TextView) resultBox.findViewById(R.id.result_nationalid)).setText("ID National: " + driver.optString("nationalId", "N/A"));
 
-            // Load driver image
+            // Fix: Load driver image correctly
             String imagePath = driver.optString("profileImage", "");
-            if (resultImage != null && !imagePath.isEmpty()) {
-                Glide.with(this)
-                        .load(ApiConstants.STORAGE_URL + imagePath)
-                        .placeholder(android.R.drawable.ic_menu_report_image)
-                        .error(android.R.drawable.ic_menu_report_image)
-                        .into(resultImage);
-            } else if (resultImage != null) {
-                resultImage.setImageResource(android.R.drawable.ic_menu_report_image);
+            if (resultImage != null) {
+                if (!imagePath.isEmpty()) {
+                    Glide.with(requireContext())
+                            .load(ApiConstants.STORAGE_URL + imagePath)
+                            .placeholder(android.R.drawable.ic_menu_report_image)
+                            .error(android.R.drawable.ic_menu_report_image)
+                            .into(resultImage);
+                } else {
+                    resultImage.setImageResource(android.R.drawable.ic_menu_report_image);
+                }
             }
-
-            // Optional fields
-            setTextIfAvailable(resultBox, R.id.result_bloodgroup, "Groupe sanguin: " + driver.optString("bloodGroup", "N/A"));
-            setTextIfAvailable(resultBox, R.id.result_issue, "Délivré le: " + license.optString("issueDate", "N/A"));
-            setTextIfAvailable(resultBox, R.id.result_expiry, "Expire le: " + license.optString("expiryDate", "N/A"));
 
             penaltiesTitle.setVisibility(View.VISIBLE);
             if (penaltiesArray != null && penaltiesArray.length() > 0) {
                 for (int i = 0; i < penaltiesArray.length(); i++) {
                     JSONObject item = penaltiesArray.getJSONObject(i);
-                    JSONObject pObj = item.optJSONObject("penalty");
-                    if (pObj == null) pObj = item; // Fallback
+                    JSONObject pObj = unwrap(item.optJSONObject("penalty"));
+                    if (pObj == null) pObj = item;
 
                     TextView tv = new TextView(getContext());
-                    String type = pObj.optString("penaltyType", pObj.optString("penalty", "Inconnu"));
-                    String amount = pObj.optString("amount", pObj.optString("fine", "0"));
+                    String type = pObj.optString("penaltyType", "Inconnu");
+                    String amount = pObj.optString("amount", "0");
                     tv.setText("• " + type + " (" + amount + " FC)");
                     tv.setTextColor(0xFFFF0000);
                     penaltiesList.addView(tv);
@@ -221,14 +205,18 @@ public class TraffickingCheckpointFragment extends Fragment {
                 penaltiesList.addView(tv);
             }
         } catch (Exception e) {
-            Log.e(TAG, "JSON parse error", e);
-            Toast.makeText(getContext(), "Erreur d'affichage des données", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Parse error: ", e);
+            Toast.makeText(getContext(), "Erreur d'affichage : " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void setTextIfAvailable(View root, int id, String text) {
-        View v = root.findViewById(id);
-        if (v instanceof TextView) ((TextView) v).setText(text);
+    private JSONObject unwrap(JSONObject obj) {
+        if (obj == null) return null;
+        String[] keys = {"App\\Models\\Driver", "App\\Models\\License", "App\\Models\\Card", "App\\Models\\Penalty"};
+        for (String key : keys) {
+            if (obj.has(key)) return obj.optJSONObject(key);
+        }
+        return obj;
     }
 
     private void showDriverOptionsDialog() {
@@ -237,9 +225,7 @@ public class TraffickingCheckpointFragment extends Fragment {
                 .setTitle("Options du Conducteur")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) showPenaltyDropdown();
-                    else Toast.makeText(getContext(), "Signalé comme fraude", Toast.LENGTH_SHORT).show();
-                })
-                .show();
+                }).show();
     }
 
     private void showPenaltyDropdown() {
@@ -268,8 +254,7 @@ public class TraffickingCheckpointFragment extends Fragment {
                         sendPenalty(plate, penalties[selected[0]], fine);
                     }
                 })
-                .setNegativeButton("Annuler", null)
-                .show();
+                .setNegativeButton("Annuler", null).show();
     }
 
     private void sendPenalty(String plate, String type, String amount) {
@@ -291,8 +276,8 @@ public class TraffickingCheckpointFragment extends Fragment {
                 os.close();
 
                 int code = conn.getResponseCode();
-                getActivity().runOnUiThread(() -> {
-                    if (code == code) {
+                requireActivity().runOnUiThread(() -> {
+                    if (code == 201 || code == 200) {
                         Toast.makeText(getContext(), "Pénalité ajoutée avec succès", Toast.LENGTH_SHORT).show();
                         handleSearch();
                     } else {
@@ -303,12 +288,5 @@ public class TraffickingCheckpointFragment extends Fragment {
                 Log.e(TAG, "Penalty error", e);
             }
         }).start();
-    }
-
-    public void processQrCode(String content) {
-        if (inputEdit != null) {
-            inputEdit.setText(content);
-            handleSearch();
-        }
     }
 }

@@ -188,6 +188,10 @@ public class PrintCardFragment extends Fragment {
                 }
 
                 JSONObject json = new JSONObject(response.toString());
+                if (status < 200 || status >= 300) {
+                    throw new Exception(json.optString("message", "Error " + status));
+                }
+
                 JSONArray driversArray = json.optJSONArray("drivers");
                 if (driversArray == null || driversArray.length() == 0) {
                     throw new Exception("No driver data found for this query.");

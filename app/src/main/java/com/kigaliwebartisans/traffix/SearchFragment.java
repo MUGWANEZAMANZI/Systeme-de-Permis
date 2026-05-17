@@ -24,12 +24,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
-public class SearchFrament extends Fragment {
+public class SearchFragment extends Fragment {
 
-    private static final String TAG = "SearchFrament";
+    private static final String TAG = "SearchFragment";
     private ProgressBar progressBar;
     private TextView infoText;
-    private LinearLayout cardsContainer;
     private TextView licenseNumberInput;
 
     @Nullable
@@ -41,16 +40,14 @@ public class SearchFrament extends Fragment {
 
         progressBar = view.findViewById(R.id.progress_bar);
         infoText = view.findViewById(R.id.info_text);
-        cardsContainer = view.findViewById(R.id.cards_container);
-
-        Button searchButton = view.findViewById(R.id.button_search);
         licenseNumberInput = view.findViewById(R.id.input_license_number);
+        Button searchButton = view.findViewById(R.id.button_search);
 
         if (searchButton != null) {
             searchButton.setOnClickListener(v -> {
                 String licenseNumber = licenseNumberInput.getText().toString().trim();
                 if (licenseNumber.isEmpty()) {
-                    Toast.makeText(getContext(), "Please enter a license number", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Veuillez entrer un numéro", Toast.LENGTH_SHORT).show();
                 } else {
                     fetchCardData(licenseNumber);
                 }
@@ -62,22 +59,21 @@ public class SearchFrament extends Fragment {
 
     /**
      * Public method called from MainActivity when an NFC tag is detected.
-     * This fixes the compilation error.
      */
     public void searchByNfcTag(String tagId) {
         if (!isAdded()) return;
         requireActivity().runOnUiThread(() -> {
             if (licenseNumberInput != null) {
                 licenseNumberInput.setText(tagId);
+                fetchCardData(tagId);
             }
-            fetchCardData(tagId);
         });
     }
 
     private void fetchCardData(String query) {
         if (progressBar == null || infoText == null) return;
         progressBar.setVisibility(View.VISIBLE);
-        infoText.setText("Searching for: " + query);
+        infoText.setText("Recherche de : " + query);
 
         new Thread(() -> {
             HttpURLConnection conn = null;
@@ -106,24 +102,17 @@ public class SearchFrament extends Fragment {
                 }
 
                 JSONObject json = new JSONObject(response.toString());
-                if (status < 200 || status >= 300) {
-                    throw new Exception(json.optString("message", "Unknown error (Status: " + status + ")"));
-                }
-
                 JSONArray driversArray = json.optJSONArray("drivers");
                 if (driversArray == null || driversArray.length() == 0) {
-                    throw new Exception("No driver data found for this query.");
+                    throw new Exception("Aucun conducteur trouvé.");
                 }
 
                 JSONObject driverData = driversArray.getJSONObject(0);
-                
-                // Robust parsing logic to unwrap Laravel model objects
                 JSONObject driver = unwrap(driverData.optJSONObject("driver"));
                 JSONObject license = unwrap(driverData.optJSONObject("license"));
-                JSONObject card = unwrap(driverData.optJSONObject("card"));
 
                 if (driver == null || license == null) {
-                    throw new Exception("Invalid data structure from server.");
+                    throw new Exception("Format de données invalide.");
                 }
 
                 Bundle bundle = new Bundle();
@@ -139,13 +128,9 @@ public class SearchFrament extends Fragment {
                 bundle.putString("expiry", license.optString("expiryDate", "N/A"));
                 bundle.putString("dateLieuDelivrance", license.optString("dateLieuDelivrance", "N/A"));
                 
-                if (card != null) {
-                    bundle.putString("cardNumber", card.optString("cardNumber", "N/A"));
-                }
-
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    infoText.setText("Card found. Opening card view...");
+                    infoText.setText("Carte trouvée.");
                     PrintCardFragment printCardFragment = new PrintCardFragment();
                     printCardFragment.setArguments(bundle);
                     requireActivity().getSupportFragmentManager()
@@ -156,11 +141,9 @@ public class SearchFrament extends Fragment {
                 });
 
             } catch (Exception e) {
-                Log.e(TAG, "Fetch error", e);
                 requireActivity().runOnUiThread(() -> {
                     if (progressBar != null) progressBar.setVisibility(View.GONE);
-                    if (infoText != null) infoText.setText("Error: " + e.getMessage());
-                    Toast.makeText(getContext(), "Failed to fetch card data: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    if (infoText != null) infoText.setText("Erreur : " + e.getMessage());
                 });
             } finally {
                 if (conn != null) conn.disconnect();
@@ -170,9 +153,9 @@ public class SearchFrament extends Fragment {
 
     private JSONObject unwrap(JSONObject obj) {
         if (obj == null) return null;
-        String[] possibleWrappers = {"App\\Models\\Driver", "App\\Models\\License", "App\\Models\\Card"};
-        for (String wrapper : possibleWrappers) {
-            if (obj.has(wrapper)) return obj.optJSONObject(wrapper);
+        String[] keys = {"App\\Models\\Driver", "App\\Models\\License", "App\\Models\\Card"};
+        for (String key : keys) {
+            if (obj.has(key)) return obj.optJSONObject(key);
         }
         return obj;
     }
