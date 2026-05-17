@@ -45,8 +45,7 @@ So in practice, if text payload cannot be read, the app uses the tag/card ID in 
 
 ## Build and run
 
-1. Open project folder in Android Studio:
-   - `/home/runner/work/Systeme-de-Permis/Systeme-de-Permis`
+1. Open the project root folder in Android Studio.
 2. Let Gradle sync complete.
 3. Connect an NFC-capable Android device (or use a compatible emulator setup).
 4. Run the `app` module.
