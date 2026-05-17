@@ -6,7 +6,7 @@ Android application for registering driver license cards and verifying drivers a
 
 - Register a driver and link them to an NFC card/tag
 - Read NFC tags from the phone and search the driver record
-- Search by QR code or by license/plate text input
+- Search by QR code or by license/plate text inputs
 - View driver details and associated penalties
 - Add penalties from the checkpoint screen
 
