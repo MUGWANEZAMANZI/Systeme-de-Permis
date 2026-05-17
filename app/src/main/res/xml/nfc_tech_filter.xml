@@ -4,6 +4,6 @@
         <tech>android.nfc.tech.Ndef</tech>
     </tech-list>
     <tech-list>
-        <tech>android.nfc.tech.NdefFormatable</tech>
+        <tech>android.nfc.tech.NdefForma table</tech>
     </tech-list>
 </resources>

@@ -41,6 +41,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -146,6 +147,16 @@ public class PrintCardFragment extends Fragment {
         return view;
     }
 
+    public void searchByNfcTag(String tagId) {
+        if (getActivity() == null) return;
+        getActivity().runOnUiThread(() -> {
+            if (licenseNumberInput != null) {
+                licenseNumberInput.setText(tagId);
+            }
+            fetchCardData(tagId);
+        });
+    }
+
     private void fetchCardData(String query) {
         progressBar.setVisibility(View.VISIBLE);
         infoText.setText("Searching for: " + query);
@@ -153,7 +164,7 @@ public class PrintCardFragment extends Fragment {
         new Thread(() -> {
             HttpURLConnection conn = null;
             try {
-                URL url = new URL("https://traffic.up.railway.app/api/print-card");
+                URL url = new URL(ApiConstants.URL + "/print-card");
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
@@ -164,7 +175,7 @@ public class PrintCardFragment extends Fragment {
                 postData.put("query", query);
 
                 try (OutputStream os = conn.getOutputStream()) {
-                    os.write(postData.toString().getBytes("utf-8"));
+                    os.write(postData.toString().getBytes(StandardCharsets.UTF_8));
                 }
 
                 int status = conn.getResponseCode();
@@ -183,9 +194,28 @@ public class PrintCardFragment extends Fragment {
                 }
 
                 JSONObject driverData = driversArray.getJSONObject(0);
-                JSONObject driver = driverData.getJSONObject("driver");
-                JSONObject license = driverData.getJSONObject("license");
-                JSONObject card = driverData.getJSONObject("card");
+                
+                // Handle nested structure
+                JSONObject driver = driverData.optJSONObject("driver");
+                if (driver != null && driver.has("App\\Models\\Driver")) {
+                    driver = driver.getJSONObject("App\\Models\\Driver");
+                } else if (driver == null) {
+                    driver = driverData.getJSONObject("driver");
+                }
+
+                JSONObject license = driverData.optJSONObject("license");
+                if (license != null && license.has("App\\Models\\License")) {
+                    license = license.getJSONObject("App\\Models\\License");
+                } else if (license == null) {
+                    license = driverData.getJSONObject("license");
+                }
+
+                JSONObject card = driverData.optJSONObject("card");
+                if (card != null && card.has("App\\Models\\Card")) {
+                    card = card.getJSONObject("App\\Models\\Card");
+                } else if (card == null) {
+                    card = driverData.getJSONObject("card");
+                }
 
 
                 // Get allowed categories
@@ -203,6 +233,9 @@ public class PrintCardFragment extends Fragment {
                     }
                 }
 
+                JSONObject finalDriver = driver;
+                JSONObject finalLicense = license;
+                JSONObject finalCard = card;
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     infoText.setText("Card found. Rendering...");
@@ -210,29 +243,29 @@ public class PrintCardFragment extends Fragment {
                     cardsContainer.setVisibility(View.VISIBLE);
 
                     // --- Populate card UI ---
-                    cardName.setText("Nom: " + driver.optString("name", "N/A"));
-                    cardSurname.setText("Prénom: " + driver.optString("surName", "N/A"));
-                    cardDob.setText("Date & Lieu de Naissance: " + driver.optString("dateOfBirth", "N/A"));
-                    cardNationality.setText("Nationalité: " + driver.optString("nationality", "N/A"));
-                    cardNationalId.setText("N° National: " + driver.optString("nationalId", "N/A"));
-                    cardAddress.setText("Adresse: " + driver.optString("address", "N/A"));
-                    cardIssue.setText("Délivré le: " + license.optString("issueDate", "N/A"));
-                    cardExpiry.setText("Expire le: " + license.optString("expiryDate", "N/A"));
+                    cardName.setText("Nom: " + finalDriver.optString("name", "N/A"));
+                    cardSurname.setText("Prénom: " + finalDriver.optString("surName", finalDriver.optString("surname", "N/A")));
+                    cardDob.setText("Date & Lieu de Naissance: " + finalDriver.optString("dateOfBirth", "N/A"));
+                    cardNationality.setText("Nationalité: " + finalDriver.optString("nationality", "N/A"));
+                    cardNationalId.setText("N° National: " + finalDriver.optString("nationalId", "N/A"));
+                    cardAddress.setText("Adresse: " + finalDriver.optString("address", "N/A"));
+                    cardIssue.setText("Délivré le: " + finalLicense.optString("issueDate", "N/A"));
+                    cardExpiry.setText("Expire le: " + finalLicense.optString("expiryDate", "N/A"));
 
                     // Populate Lieu & Date de Livraison and Card Number
-                    lieuDateDeLivraison.setText("Lieu & Date de Livraison: " + driverData.optString("dateLieuDelivrance", "N/A"));
-                    carNumber.setText(" " + card.optString("cardNumber", "N/A"));
+                    lieuDateDeLivraison.setText("Lieu & Date de Livraison: " + finalLicense.optString("dateLieuDelivrance", "N/A"));
+                    carNumber.setText(" " + finalCard.optString("cardNumber", "N/A"));
 
                     // Load profile image
-                    String profileImagePath = driver.optString("profileImage", "");
-                    String fullProfileImageUrl = "https://traffic.up.railway.app/storage/" + profileImagePath;
+                    String profileImagePath = finalDriver.optString("profileImage", "");
+                    String fullProfileImageUrl = ApiConstants.STORAGE_URL + profileImagePath;
                     Glide.with(requireContext())
                             .load(fullProfileImageUrl)
                             .error(new ColorDrawable(Color.LTGRAY))
                             .into(cardProfile);
 
                     // Set license number and QR code
-                    String licenseNumber = license.optString("licenseNumber", "N/A");
+                    String licenseNumber = finalLicense.optString("licenseNumber", "N/A");
                     licenseNumberBack.setText("Permis No: " + licenseNumber);
                     Bitmap qrBitmap = generateQrCode(licenseNumber);
                     if (qrBitmap != null) {
@@ -337,7 +370,6 @@ public class PrintCardFragment extends Fragment {
     }
 
     private Bitmap generateQrCode(String content) {
-        // ... (The generateQrCode method remains the same)
         try {
             QRCodeWriter writer = new QRCodeWriter();
             com.google.zxing.common.BitMatrix bitMatrix =

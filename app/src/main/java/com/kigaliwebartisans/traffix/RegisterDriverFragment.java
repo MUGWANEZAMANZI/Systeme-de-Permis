@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,66 +32,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-
-import android.content.pm.PackageManager;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import java.nio.charset.StandardCharsets;
 
 public class RegisterDriverFragment extends Fragment {
-    // Handle NFC tag (NDEF or NdefFormattable)
-    public void processNfcTag(android.nfc.Tag tag) {
-        if (tag == null) return;
-        // Try to read NDEF text (optional, for future use)
-        android.nfc.tech.Ndef ndef = android.nfc.tech.Ndef.get(tag);
-        if (ndef != null) {
-            try {
-                ndef.connect();
-                android.nfc.NdefMessage ndefMessage = ndef.getNdefMessage();
-                if (ndefMessage != null && ndefMessage.getRecords().length > 0) {
-                    String text = getTextFromNdefRecord(ndefMessage.getRecords()[0]);
-                    if (text != null && !text.isEmpty()) {
-                        setNfcTag(text);
-                        ndef.close();
-                        return;
-                    }
-                }
-                ndef.close();
-            } catch (Exception e) {
-                // fallback below
-            }
-        }
-        // Fallback: use tag ID
-        String tagId = bytesToHexString(tag.getId());
-        setNfcTag(tagId);
-    }
-
-    // Helper to extract text from NDEF record (well-known type)
-    private String getTextFromNdefRecord(android.nfc.NdefRecord record) {
-        try {
-            byte[] payload = record.getPayload();
-            String textEncoding = ((payload[0] & 0x80) == 0) ? "UTF-8" : "UTF-16";
-            int languageCodeLength = payload[0] & 0x3F;
-            return new String(payload, languageCodeLength + 1, payload.length - languageCodeLength - 1, textEncoding);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    // Helper to convert byte array to hex string
-    private String bytesToHexString(byte[] src) {
-        if (src == null || src.length == 0) return "";
-        char[] hexChars = new char[src.length * 2];
-        for (int j = 0; j < src.length; j++) {
-            int v = src[j] & 0xFF;
-            hexChars[j * 2] = "0123456789ABCDEF".charAt(v >>> 4);
-            hexChars[j * 2 + 1] = "0123456789ABCDEF".charAt(v & 0x0F);
-        }
-        return new String(hexChars);
-    }
+    
+    private static final String TAG = "RegisterDriverFragment";
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int TAKE_PHOTO_REQUEST = 2;
+    
     private EditText nameEdit, surNameEdit, addressEdit, plateEdit, bloodGroupEdit, licenseIdEdit, issueEdit, expiryEdit, nationalityEdit, nationalIdEdit, phoneEdit, emailEdit, nfcTagEdit;
-    private EditText licensesAllowedEdit, dateLieuEdit;
+    private EditText dateLieuEdit;
     private android.widget.CheckBox catABox, catBBox, catCBox, catDBox, catEBox;
     private ImageView imageView;
     private Uri imageUri;
@@ -104,35 +55,34 @@ public class RegisterDriverFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_register_driver, container, false);
-    nameEdit = view.findViewById(R.id.edit_name);
-    surNameEdit = view.findViewById(R.id.edit_surname);
-    addressEdit = view.findViewById(R.id.edit_address);
-    plateEdit = view.findViewById(R.id.edit_plate);
-    bloodGroupEdit = view.findViewById(R.id.edit_bloodgroup);
-    licenseIdEdit = view.findViewById(R.id.edit_licenseid);
-    issueEdit = view.findViewById(R.id.edit_issue);
-    expiryEdit = view.findViewById(R.id.edit_expiry);
-    nationalityEdit = view.findViewById(R.id.edit_nationality);
-    nationalIdEdit = view.findViewById(R.id.edit_nationalid);
-    phoneEdit = view.findViewById(R.id.edit_phone);
-    emailEdit = view.findViewById(R.id.edit_email);
-//    licensesAllowedEdit = view.findViewById(R.id.edit_licenses_allowed);
-    dateLieuEdit = view.findViewById(R.id.edit_date_lieu);
-    catABox = view.findViewById(R.id.checkbox_cat_a);
-    catBBox = view.findViewById(R.id.checkbox_cat_b);
-    catCBox = view.findViewById(R.id.checkbox_cat_c);
-    catDBox = view.findViewById(R.id.checkbox_cat_d);
-    catEBox = view.findViewById(R.id.checkbox_cat_e);
-    imageView = view.findViewById(R.id.image_view);
-    nfcContentTextView = view.findViewById(R.id.nfc_content_textview);
-    nfcTagEdit = view.findViewById(R.id.edit_nfc_tag);
+        
+        nameEdit = view.findViewById(R.id.edit_name);
+        surNameEdit = view.findViewById(R.id.edit_surname);
+        addressEdit = view.findViewById(R.id.edit_address);
+        plateEdit = view.findViewById(R.id.edit_plate);
+        bloodGroupEdit = view.findViewById(R.id.edit_bloodgroup);
+        licenseIdEdit = view.findViewById(R.id.edit_licenseid);
+        issueEdit = view.findViewById(R.id.edit_issue);
+        expiryEdit = view.findViewById(R.id.edit_expiry);
+        nationalityEdit = view.findViewById(R.id.edit_nationality);
+        nationalIdEdit = view.findViewById(R.id.edit_nationalid);
+        phoneEdit = view.findViewById(R.id.edit_phone);
+        emailEdit = view.findViewById(R.id.edit_email);
+        dateLieuEdit = view.findViewById(R.id.edit_date_lieu);
+        catABox = view.findViewById(R.id.checkbox_cat_a);
+        catBBox = view.findViewById(R.id.checkbox_cat_b);
+        catCBox = view.findViewById(R.id.checkbox_cat_c);
+        catDBox = view.findViewById(R.id.checkbox_cat_d);
+        catEBox = view.findViewById(R.id.checkbox_cat_e);
+        imageView = view.findViewById(R.id.image_view);
+        nfcContentTextView = view.findViewById(R.id.nfc_content_textview);
+        nfcTagEdit = view.findViewById(R.id.edit_nfc_tag);
 
         progressBar = view.findViewById(R.id.progress_bar);
         registerButton = view.findViewById(R.id.button_register);
         pickImageButton = view.findViewById(R.id.button_pick_image);
         takePhotoButton = view.findViewById(R.id.button_take_photo);
 
-        // Date pickers for issue and expiry
         issueEdit.setFocusable(false);
         issueEdit.setOnClickListener(v -> showDatePicker(issueEdit, issueCalendar));
         expiryEdit.setFocusable(false);
@@ -145,20 +95,17 @@ public class RegisterDriverFragment extends Fragment {
         return view;
     }
 
-    public void setNfcContent(String content) {
-        if (getActivity() == null || getView() == null) return;
-        if (nfcContentTextView != null) nfcContentTextView.setText(content);
-        if (nfcTagEdit != null) nfcTagEdit.setText(content);
-    }
-
-    // Call this from MainActivity when a tag is read
     public void setNfcTag(String tag) {
+        Log.d(TAG, "NFC Tag received in fragment: " + tag);
         if (getActivity() == null || getView() == null) return;
-        if (nfcTagEdit != null) nfcTagEdit.setText(tag);
-        if (nfcContentTextView != null) {
-            nfcContentTextView.setText(tag);
-            nfcContentTextView.setHint(tag);
-        }
+        getActivity().runOnUiThread(() -> {
+            if (nfcTagEdit != null) nfcTagEdit.setText(tag);
+            if (nfcContentTextView != null) {
+                nfcContentTextView.setText("Carte détectée: " + tag);
+                nfcContentTextView.setBackgroundColor(0xFFCCFFCC); // Light green
+            }
+            Toast.makeText(getContext(), "Carte NFC capturée!", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void pickImage() {
@@ -193,7 +140,6 @@ public class RegisterDriverFragment extends Fragment {
     }
 
     private void handleRegister() {
-        // Validate required fields (add more as needed)
         String name = nameEdit.getText().toString().trim();
         String surName = surNameEdit.getText().toString().trim();
         String address = addressEdit.getText().toString().trim();
@@ -206,60 +152,53 @@ public class RegisterDriverFragment extends Fragment {
         String nationalId = nationalIdEdit.getText().toString().trim();
         String phone = phoneEdit.getText().toString().trim();
         String email = emailEdit.getText().toString().trim();
-    String nfcTag = (nfcTagEdit != null ? nfcTagEdit.getText().toString().trim() : "");
-    String licensesAllowed = (licensesAllowedEdit != null ? licensesAllowedEdit.getText().toString().trim() : "");
-    String dateLieu = (dateLieuEdit != null ? dateLieuEdit.getText().toString().trim() : "");
-    // Collect allowed categories from checkboxes
-    java.util.List<String> allowedCategories = new java.util.ArrayList<>();
-    if (catABox != null && catABox.isChecked()) allowedCategories.add("A");
-    if (catBBox != null && catBBox.isChecked()) allowedCategories.add("B");
-    if (catCBox != null && catCBox.isChecked()) allowedCategories.add("C");
-    if (catDBox != null && catDBox.isChecked()) allowedCategories.add("D");
-    if (catEBox != null && catEBox.isChecked()) allowedCategories.add("E");
-    String allowedCategoriesStr = android.text.TextUtils.join(",", allowedCategories);
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(surName) || TextUtils.isEmpty(licenseId) || TextUtils.isEmpty(plate) || TextUtils.isEmpty(issue) || TextUtils.isEmpty(expiry)) {
-            Toast.makeText(getContext(), "Veuillez remplir tous les champs obligatoires", Toast.LENGTH_SHORT).show();
+        String nfcTag = (nfcTagEdit != null ? nfcTagEdit.getText().toString().trim() : "");
+        String dateLieu = (dateLieuEdit != null ? dateLieuEdit.getText().toString().trim() : "");
+
+        java.util.List<String> allowedCategories = new java.util.ArrayList<>();
+        if (catABox != null && catABox.isChecked()) allowedCategories.add("A");
+        if (catBBox != null && catBBox.isChecked()) allowedCategories.add("B");
+        if (catCBox != null && catCBox.isChecked()) allowedCategories.add("C");
+        if (catDBox != null && catDBox.isChecked()) allowedCategories.add("D");
+        if (catEBox != null && catEBox.isChecked()) allowedCategories.add("E");
+        String allowedCategoriesStr = android.text.TextUtils.join(",", allowedCategories);
+
+        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(surName) || TextUtils.isEmpty(licenseId) || TextUtils.isEmpty(plate)) {
+            Toast.makeText(getContext(), "Veuillez remplir les champs obligatoires", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Generate MD5 hash of plate number
         final String secret;
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(plate.getBytes());
+            md.update(plate.getBytes(StandardCharsets.UTF_8));
             byte[] digest = md.digest();
             StringBuilder sb = new StringBuilder();
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b & 0xff));
-            }
+            for (byte b : digest) sb.append(String.format("%02x", b & 0xff));
             secret = sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            Toast.makeText(getContext(), "Erreur de hachage MD5", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Get image bytes (JPEG)
         final byte[] imageBytes;
         byte[] tempImageBytes = null;
         if (imageView.getDrawable() != null) {
-            imageView.setDrawingCacheEnabled(true);
-            imageView.buildDrawingCache();
             Bitmap bitmap = null;
-            if (imageUri != null) {
-                try {
+            try {
+                if (imageUri != null) {
                     bitmap = MediaStore.Images.Media.getBitmap(requireActivity().getContentResolver(), imageUri);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } else {
+                    imageView.setDrawingCacheEnabled(true);
+                    bitmap = Bitmap.createBitmap(imageView.getDrawingCache());
+                    imageView.setDrawingCacheEnabled(false);
                 }
-            }
-            if (bitmap == null && imageView.getDrawable() != null) {
-                imageView.setDrawingCacheEnabled(true);
-                bitmap = imageView.getDrawingCache();
-            }
-            if (bitmap != null) {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos);
-                tempImageBytes = baos.toByteArray();
+                if (bitmap != null) {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+                    tempImageBytes = baos.toByteArray();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Image conversion error: " + e.getMessage());
             }
         }
         imageBytes = tempImageBytes;
@@ -270,45 +209,40 @@ public class RegisterDriverFragment extends Fragment {
             String lineEnd = "\r\n";
             String twoHyphens = "--";
             try {
-                String apiUrl = com.kigaliwebartisans.traffix.ApiConstants.URL + "/register-drivers";
-                java.net.URL url = new java.net.URL(apiUrl);
-
+                java.net.URL url = new java.net.URL(ApiConstants.URL + "/register-drivers");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
                 conn.setDoOutput(true);
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+                
                 DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
+                java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
+                fields.put("name", name);
+                fields.put("surname", surName);
+                fields.put("address", address);
+                fields.put("plateNumber", plate);
+                fields.put("bloodGroup", bloodGroup);
+                fields.put("licenseNumber", licenseId);
+                fields.put("issueDate", issue);
+                fields.put("expiryDate", expiry);
+                fields.put("nationality", nationality);
+                fields.put("nationalId", nationalId);
+                fields.put("phone", phone);
+                fields.put("email", email);
+                fields.put("nfcTag", nfcTag);
+                fields.put("secret", secret);
+                fields.put("dateLieuDelivrance", dateLieu);
+                fields.put("allowedCategories", allowedCategoriesStr);
 
-                // Helper to write a form field
-            java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
-            fields.put("name", name);
-            fields.put("surname", surName);
-            fields.put("address", address);
-            fields.put("plateNumber", plate);
-            fields.put("bloodGroup", bloodGroup);
-            fields.put("licenseNumber", licenseId);
-            fields.put("issueDate", issue);
-            fields.put("expiryDate", expiry);
-            fields.put("nationality", nationality);
-            fields.put("nationalId", nationalId);
-            fields.put("phone", phone);
-            fields.put("email", email);
-            fields.put("nfcTag", nfcTag);
-            fields.put("secret", secret);
-            // Add allowed categories fields.put("licensesAllowed", licensesAllowed);
-            fields.put("dateLieuDelivrance", dateLieu);
-            fields.put("allowedCategories", allowedCategoriesStr);
                 for (java.util.Map.Entry<String, String> entry : fields.entrySet()) {
                     dos.writeBytes(twoHyphens + boundary + lineEnd);
                     dos.writeBytes("Content-Disposition: form-data; name=\"" + entry.getKey() + "\"" + lineEnd);
+                    dos.writeBytes("Content-Type: text/plain; charset=UTF-8" + lineEnd);
                     dos.writeBytes(lineEnd);
-                    dos.writeBytes(entry.getValue() + lineEnd);
+                    dos.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                    dos.writeBytes(lineEnd);
                 }
 
-                // Add image if present
                 if (imageBytes != null) {
                     dos.writeBytes(twoHyphens + boundary + lineEnd);
                     dos.writeBytes("Content-Disposition: form-data; name=\"profileImage\"; filename=\"profile.jpg\"" + lineEnd);
@@ -323,52 +257,41 @@ public class RegisterDriverFragment extends Fragment {
 
                 int responseCode = conn.getResponseCode();
                 InputStream is = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
-                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is));
+                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, StandardCharsets.UTF_8));
                 StringBuilder sbResp = new StringBuilder();
                 String line;
                 while ((line = reader.readLine()) != null) sbResp.append(line);
                 reader.close();
-                String response = sbResp.toString();
+
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     if (responseCode >= 200 && responseCode < 300) {
-                        new AlertDialog.Builder(getContext())
-                                .setTitle("Succès")
-                                .setMessage("Conducteur enregistré !")
-                                .setPositiveButton("OK", null)
-                                .show();
+                        Toast.makeText(getContext(), "Enregistrement réussi!", Toast.LENGTH_LONG).show();
+                        clearFields();
                     } else {
-                        new AlertDialog.Builder(getContext())
-                                .setTitle("Erreur")
-                                .setMessage("Erreur lors de l'enregistrement: " + response)
-                                .setPositiveButton("OK", null)
-                                .show();
+                        new AlertDialog.Builder(getContext()).setTitle("Erreur").setMessage(sbResp.toString()).show();
                     }
                 });
             } catch (Exception e) {
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    new AlertDialog.Builder(getContext())
-                            .setTitle("Erreur")
-                            .setMessage("Erreur réseau: " + e.getMessage())
-                            .setPositiveButton("OK", null)
-                            .show();
+                    Toast.makeText(getContext(), "Erreur réseau: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
         }).start();
     }
 
+    private void clearFields() {
+        EditText[] fields = {nameEdit, surNameEdit, addressEdit, plateEdit, bloodGroupEdit, licenseIdEdit, issueEdit, expiryEdit, nationalityEdit, nationalIdEdit, phoneEdit, emailEdit, nfcTagEdit, dateLieuEdit};
+        for (EditText f : fields) if (f != null) f.setText("");
+        if (imageView != null) imageView.setImageResource(0);
+        if (nfcContentTextView != null) nfcContentTextView.setText("Approchez une carte de permit...");
+    }
+
     private void showDatePicker(EditText target, Calendar cal) {
-        int year = cal.get(Calendar.YEAR);
-        int month = cal.get(Calendar.MONTH);
-        int day = cal.get(Calendar.DAY_OF_MONTH);
-        DatePickerDialog dialog = new DatePickerDialog(requireContext(), (view, y, m, d) -> {
-            cal.set(Calendar.YEAR, y);
-            cal.set(Calendar.MONTH, m);
-            cal.set(Calendar.DAY_OF_MONTH, d);
-            String dateStr = String.format("%04d-%02d-%02d", y, m+1, d);
-            target.setText(dateStr);
-        }, year, month, day);
-        dialog.show();
+        new DatePickerDialog(requireContext(), (view, y, m, d) -> {
+            cal.set(y, m, d);
+            target.setText(String.format("%04d-%02d-%02d", y, m + 1, d));
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
     }
 }

@@ -29,14 +29,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public class SearchFrament extends Fragment {
 
 	private ProgressBar progressBar;
 	private TextView infoText;
 	private LinearLayout cardsContainer;
-
-
+	private TextView licenseNumberInput;
 
 	@Nullable
 	@Override
@@ -49,10 +49,8 @@ public class SearchFrament extends Fragment {
 		infoText = view.findViewById(R.id.info_text);
 		cardsContainer = view.findViewById(R.id.cards_container);
 
-
-
 		Button searchButton = view.findViewById(R.id.button_search);
-		TextView licenseNumberInput = view.findViewById(R.id.input_license_number);
+		licenseNumberInput = view.findViewById(R.id.input_license_number);
 
 		searchButton.setOnClickListener(v -> {
 			String licenseNumber = licenseNumberInput.getText().toString().trim();
@@ -66,6 +64,16 @@ public class SearchFrament extends Fragment {
 		return view;
 	}
 
+	public void searchByNfcTag(String tagId) {
+		if (getActivity() == null) return;
+		getActivity().runOnUiThread(() -> {
+			if (licenseNumberInput != null) {
+				licenseNumberInput.setText(tagId);
+			}
+			fetchCardData(tagId);
+		});
+	}
+
 	private void fetchCardData(String query) {
 		progressBar.setVisibility(View.VISIBLE);
 		infoText.setText("Searching for: " + query);
@@ -73,7 +81,7 @@ public class SearchFrament extends Fragment {
 		new Thread(() -> {
 			HttpURLConnection conn = null;
 			try {
-				   URL url = new URL("https://traffic.up.railway.app/api/print-card");
+				URL url = new URL(ApiConstants.URL + "/print-card");
 				conn = (HttpURLConnection) url.openConnection();
 				conn.setRequestMethod("POST");
 				conn.setRequestProperty("Content-Type", "application/json; utf-8");
@@ -84,7 +92,7 @@ public class SearchFrament extends Fragment {
 				postData.put("query", query);
 
 				try (OutputStream os = conn.getOutputStream()) {
-					os.write(postData.toString().getBytes("utf-8"));
+					os.write(postData.toString().getBytes(StandardCharsets.UTF_8));
 				}
 
 				int status = conn.getResponseCode();
@@ -103,13 +111,26 @@ public class SearchFrament extends Fragment {
 				}
 
 				JSONObject driverData = driversArray.getJSONObject(0);
-				JSONObject driver = driverData.getJSONObject("driver");
-				JSONObject license = driverData.getJSONObject("license");
+				
+				// Handle Laravel nested structure if present
+				JSONObject driver = driverData.optJSONObject("driver");
+				if (driver != null && driver.has("App\\Models\\Driver")) {
+					driver = driver.getJSONObject("App\\Models\\Driver");
+				} else if (driver == null) {
+					driver = driverData.getJSONObject("driver");
+				}
+
+				JSONObject license = driverData.optJSONObject("license");
+				if (license != null && license.has("App\\Models\\License")) {
+					license = license.getJSONObject("App\\Models\\License");
+				} else if (license == null) {
+					license = driverData.getJSONObject("license");
+				}
 
 				// Pass all relevant data to PrintCardFragment via Bundle
 				Bundle bundle = new Bundle();
 				bundle.putString("name", driver.optString("name", "N/A"));
-				bundle.putString("surName", driver.optString("surName", "N/A"));
+				bundle.putString("surName", driver.optString("surName", driver.optString("surname", "N/A")));
 				bundle.putString("address", driver.optString("address", "N/A"));
 				bundle.putString("nationalId", driver.optString("nationalId", "N/A"));
 				bundle.putString("profileImagePath", driver.optString("profileImage", ""));
@@ -118,6 +139,13 @@ public class SearchFrament extends Fragment {
 				bundle.putString("licenseNumber", license.optString("licenseNumber", "N/A"));
 				bundle.putString("issue", license.optString("issueDate", "N/A"));
 				bundle.putString("expiry", license.optString("expiryDate", "N/A"));
+				bundle.putString("dateLieuDelivrance", license.optString("dateLieuDelivrance", "N/A"));
+				
+				if (driverData.has("card")) {
+					JSONObject card = driverData.getJSONObject("card");
+					if (card.has("App\\Models\\Card")) card = card.getJSONObject("App\\Models\\Card");
+					bundle.putString("cardNumber", card.optString("cardNumber", "N/A"));
+				}
 
 				requireActivity().runOnUiThread(() -> {
 					progressBar.setVisibility(View.GONE);
